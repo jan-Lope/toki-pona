@@ -2,39 +2,65 @@ getRandomEntry = ->
   dictionary[Math.floor Math.random() * dictionary.length]
 
 
+filterEntry = (exp, prefix='') ->
+  try re = new RegExp "#{prefix}#{exp.trim()}" catch then return -> false
+  return (entry) -> re.test(entry.tokipona) or re.test(entry.english)
+
+
 search = (exp) ->
   if !exp then return []
-  re = new RegExp exp.trim()
-  return dictionary.filter (e) -> re.test(e.tokipona) or re.test(e.english)
+  exactMatches = dictionary.filter filterEntry exp, '^'
+  otherMatches = dictionary.filter((e) -> e not in exactMatches).filter filterEntry exp
+  return exactMatches.concat(otherMatches)[...100]
 
 
-
-state = null
-
-
-window.tokipona =
-  random: ->
-    if !state
-      entry = getRandomEntry()
-
-      [q, a] = if Math.random() > .5 then ['tokipona', 'english'] else ['english', 'tokipona']
-      state =
-        question: entry[q]
-        answer: entry[a]
-
-      document.getElementById('question').innerText = state.question
-      document.getElementById('answer').innerText = '?'
-
-    else
-      document.getElementById('answer').innerText = state.answer
-      state = null
+setSearchResults = ->
+  results = search document.getElementById('search').value
+  document.getElementById('results').innerHTML = results.map((e) -> "#{e.tokiponaHTML} :: #{e.englishHTML}").join '<br />'
 
 
-  search: ->
-    results = search document.getElementById('search').value
-    document.getElementById('results').innerHTML = results.map((e) -> "#{e.tokipona} :: #{e.english}").join '<br />'
+setSearchValue = (text) ->
+  document.getElementById('search').value = text
+  setSearchResults()
 
 
+selectable = (text) ->
+  text.replace /[A-Za-z]+/g, (word) -> """
+    <a onclick='tokipona.setSearchValue("#{word}")'>#{word}</a>
+  """
+
+
+#
+#
+#
+onclickRandomState = null
+
+pickQuestionAndAnswer = ->
+  if !onclickRandomState
+    entry = getRandomEntry()
+
+    [q, a] = if Math.random() > .5 then ['tokipona', 'english'] else ['english', 'tokipona']
+    onclickRandomState =
+      question: entry[q+'HTML']
+      answer: entry[a+'HTML']
+
+    document.getElementById('question').innerHTML = onclickRandomState.question
+    document.getElementById('answer').innerHTML = '?'
+
+  else
+    document.getElementById('answer').innerHTML = onclickRandomState.answer
+    onclickRandomState = null
+
+
+#
+#
+#
+window.tokipona = {pickQuestionAndAnswer, setSearchResults, setSearchValue}
+
+
+#
+#
+#
 dictionary = '''
    ... o tawa tomo sina! :: ... go to your house! 
    a a a! ni li musi.   :: Hahaha! That's funny.  
@@ -1641,5 +1667,7 @@ dictionary = '''
   return entry =
     tokipona: tokipona.trim()
     english: english.trim()
+    tokiponaHTML: selectable tokipona
+    englishHTML: selectable english
 
 
